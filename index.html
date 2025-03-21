@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Title Checker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav class="nav-container">
+            <div class="logo">
+                <i class="fas fa-check-circle"></i>
+                <span>Title Checker</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="steps.html"><i class="fas fa-list-ol"></i> Steps to Follow</a></li>
+                <li><a href="contact.html"><i class="fas fa-envelope"></i> Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Title Verification Made Easy</h1>
+        <p>Upload your text file and verify titles with our advanced checking system</p>
+    </section>
+
+    <!-- Main Content -->
+    <main>
+        <div class="container">
+            <div class="upload-section">
+                <div class="upload-area" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Drag & Drop Your File</h3>
+                    <p>or</p>
+                    <label for="fileInput" class="upload-button">
+                        <i class="fas fa-file-alt"></i>
+                        Choose File
+                    </label>
+                    <input type="file" id="fileInput" accept=".txt" class="hidden">
+                </div>
+
+                <div id="fileNameDisplay" class="file-name-display"></div>
+
+                <div class="input-section">
+                    <div class="input-group">
+                        <i class="fas fa-heading"></i>
+                        <input type="text" id="titleInput" placeholder="Enter a title to check">
+                    </div>
+                    <button onclick="verifyTitle()" class="verify-button">
+                        <i class="fas fa-search"></i>
+                        Verify Title
+                    </button>
+                </div>
+            </div>
+
+            <div id="result"></div>
+
+            <div class="history-section">
+                <div class="history-header">
+                    <h2><i class="fas fa-history"></i> Verification History</h2>
+                    <button onclick="clearAllTitles()" class="clear-button">
+                        <i class="fas fa-trash"></i>
+                        Clear All Titles
+                    </button>
+                </div>
+                <div id="verifiedTitles"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Title Checker</h4>
+                <p>Making title verification simple and efficient</p>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="steps.html">Steps to Follow</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Connect With Us</h4>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Title Checker. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Function to format date
+        function formatDate(date) {
+            return new Date(date).toLocaleString();
+        }
+
+        // Function to verify title
+        async function verifyTitle() {
+            const fileInput = document.getElementById('fileInput');
+            const userTitle = document.getElementById('titleInput').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<div class="error"><i class="fas fa-exclamation-circle"></i> Please select a file</div>';
+                return;
+            }
+
+            if (!userTitle) {
+                resultDiv.innerHTML = '<div class="error"><i class="fas fa-exclamation-circle"></i> Please enter a title</div>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('titleFile', fileInput.files[0]);
+            formData.append('userTitle', userTitle);
+
+            try {
+                const response = await fetch('http://localhost:5000/upload-file', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.duplicate) {
+                    resultDiv.innerHTML = '<div class="error"><i class="fas fa-times-circle"></i> This title already exists in the file!</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="success"><i class="fas fa-check-circle"></i> Title is unique!</div>';
+                }
+
+                // Refresh the verified titles list
+                loadVerifiedTitles();
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error"><i class="fas fa-exclamation-circle"></i> Error: ' + error.message + '</div>';
+            }
+        }
+
+        // Function to load verified titles
+        async function loadVerifiedTitles() {
+            try {
+                const response = await fetch('http://localhost:5000/verified-titles');
+                const titles = await response.json();
+                
+                const titlesDiv = document.getElementById('verifiedTitles');
+                titlesDiv.innerHTML = titles.map(title => `
+                    <div class="title-item">
+                        <div class="title-content">
+                            <strong>${title.title}</strong>
+                            <span class="status-badge ${title.duplicate ? 'status-duplicate' : 'status-unique'}">
+                                <i class="fas ${title.duplicate ? 'fa-times-circle' : 'fa-check-circle'}"></i>
+                                ${title.duplicate ? 'Duplicate' : 'Unique'}
+                            </span>
+                        </div>
+                        <div class="timestamp">
+                            <i class="far fa-clock"></i>
+                            ${formatDate(title.timestamp || new Date())}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading verified titles:', error);
+            }
+        }
+
+        // Drag and drop functionality
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        function updateFileNameDisplay(file) {
+            if (file) {
+                fileNameDisplay.innerHTML = `
+                    <div class="file-info">
+                        <i class="fas fa-file-alt"></i>
+                        <span>${file.name}</span>
+                    </div>
+                `;
+                fileNameDisplay.style.display = 'block';
+            } else {
+                fileNameDisplay.style.display = 'none';
+            }
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                updateFileNameDisplay(e.target.files[0]);
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                fileInput.files = files;
+                updateFileNameDisplay(files[0]);
+            }
+        });
+
+        // Load verified titles when page loads
+        loadVerifiedTitles();
+
+        // Function to clear all titles
+        async function clearAllTitles() {
+            if (!confirm('Are you sure you want to clear all verified titles? This action cannot be undone.')) {
+                return;
+            }
+
+            const titlesDiv = document.getElementById('verifiedTitles');
+            const resultDiv = document.getElementById('result');
+
+            try {
+                // Show loading state
+                titlesDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Clearing titles...</div>';
+                
+                const response = await fetch('http://localhost:5000/clear-titles', {
+                    method: 'POST'
+                });
+
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned non-JSON response');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    titlesDiv.innerHTML = '';
+                    resultDiv.innerHTML = `<div class="success"><i class="fas fa-check-circle"></i> Successfully cleared ${data.clearedCount} titles!</div>`;
+                    
+                    // Clear the success message after 5 seconds
+                    setTimeout(() => {
+                        resultDiv.innerHTML = '';
+                    }, 5000);
+                } else {
+                    throw new Error(data.message || 'Failed to clear titles');
+                }
+            } catch (error) {
+                console.error('Error clearing titles:', error);
+                resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-circle"></i> Error: ${error.message}. Please make sure the server is running.</div>`;
+                // Reload titles to ensure UI is in sync with server state
+                loadVerifiedTitles();
+            }
+        }
+    </script>
+</body>
+</html>
